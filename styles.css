@@ -679,35 +679,229 @@ button {
 }
 
 @media (max-width: 420px) {
+  :root {
+    --nav-height: 84px;
+    --radius-xl: 24px;
+    --radius-lg: 18px;
+    --radius-md: 16px;
+  }
+
   .app-shell {
+    padding-top: calc(14px + env(safe-area-inset-top));
     padding-left: 12px;
     padding-right: 12px;
+    padding-bottom: calc(var(--nav-height) + 18px + env(safe-area-inset-bottom));
   }
 
   .stats-grid {
-    gap: 10px;
+    gap: 8px;
+    margin-bottom: 10px;
   }
 
   .stat-card {
-    padding: 14px;
+    padding: 12px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: clamp(17px, 4.6vw, 22px);
+  }
+
+  .game-panel,
+  .placeholder-card,
+  .task-summary-card,
+  .task-card,
+  .leaderboard-list,
+  .leaderboard-current,
+  .withdraw-card,
+  .withdraw-history {
+    border-radius: 20px;
+  }
+
+  .game-panel,
+  .placeholder-card {
+    padding: 10px;
   }
 
   .tasks-summary {
-    gap: 10px;
-  }
-
-  .game-hud {
-    inset: 12px 12px auto;
     gap: 8px;
   }
 
+  .task-summary-card {
+    flex: 1 1 96px;
+    padding: 12px;
+  }
+
+  .tasks-panel,
+  .leaderboard-panel,
+  .withdraw-panel {
+    gap: 10px;
+  }
+
+  .tasks-list,
+  .leaderboard-list,
+  .withdraw-history {
+    gap: 8px;
+  }
+
+  .game-hud {
+    inset: 10px 10px auto;
+    gap: 6px;
+  }
+
   .game-chip {
-    min-width: 96px;
+    min-width: 84px;
+    padding: 8px 10px;
+    border-radius: 14px;
+  }
+
+  .game-chip span {
+    font-size: 11px;
+  }
+
+  .game-chip strong {
+    font-size: 13px;
+  }
+
+  .game-frame {
+    min-height: 480px;
+    border-radius: 20px;
+  }
+
+  .overlay-card {
+    width: min(100%, 270px);
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .overlay-card h3 {
+    font-size: 18px;
+  }
+
+  .overlay-card p {
+    font-size: 13px;
+  }
+
+  .overlay-button {
+    margin-top: 12px;
+    padding: 11px 16px;
+    font-size: 14px;
+  }
+
+  .task-card {
+    padding: 12px;
   }
 
   .task-card-head,
   .task-reward-row {
     flex-direction: column;
+    gap: 8px;
+  }
+
+  .task-card-head {
+    margin-bottom: 8px;
+  }
+
+  .task-title {
+    font-size: 16px;
+  }
+
+  .task-description {
+    margin-bottom: 6px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .task-status {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .task-reward-row {
+    margin-top: 8px;
+  }
+
+  .task-reward,
+  .task-action {
+    width: 100%;
+    justify-content: center;
+    padding: 9px 12px;
+    font-size: 12px;
+  }
+
+  .leaderboard-tabs,
+  .leaderboard-actions {
+    gap: 8px;
+  }
+
+  .leaderboard-tab,
+  .leaderboard-action-button {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .leaderboard-list,
+  .leaderboard-current,
+  .withdraw-card,
+  .withdraw-history {
+    padding: 12px;
+  }
+
+  .leaderboard-row,
+  .withdraw-row {
+    gap: 10px;
+    border-radius: 16px;
+    padding: 10px;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+  }
+
+  .leaderboard-position,
+  .leaderboard-value,
+  .withdraw-row-value {
+    font-size: 12px;
+  }
+
+  .leaderboard-user {
+    gap: 10px;
+  }
+
+  .leaderboard-avatar,
+  .leaderboard-avatar-fallback {
+    width: 36px;
+    height: 36px;
+  }
+
+  .leaderboard-name,
+  .withdraw-row-title {
+    font-size: 13px;
+  }
+
+  .leaderboard-subtitle,
+  .withdraw-row-subtitle,
+  .withdraw-hint {
+    font-size: 11px;
+  }
+
+  .withdraw-card-head {
+    margin-bottom: 12px;
+  }
+
+  .withdraw-card-head h2,
+  .withdraw-history-title {
+    font-size: 18px;
+  }
+
+  .withdraw-button,
+  .withdraw-connect {
+    padding: 12px 14px;
+    font-size: 13px;
   }
 
   .bottom-nav {
@@ -729,5 +923,81 @@ button {
   .nav-icon img {
     width: 16px;
     height: 16px;
+  }
+
+  .toast {
+    width: min(calc(100% - 20px), 420px);
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 380px) {
+  :root {
+    --nav-height: 80px;
+  }
+
+  .app-shell {
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-bottom: calc(var(--nav-height) + 16px + env(safe-area-inset-bottom));
+  }
+
+  .stats-grid {
+    gap: 6px;
+  }
+
+  .stat-card,
+  .task-summary-card {
+    padding: 10px;
+  }
+
+  .stat-value {
+    font-size: clamp(16px, 4.4vw, 20px);
+  }
+
+  .game-frame {
+    min-height: 450px;
+  }
+
+  .task-card,
+  .leaderboard-list,
+  .leaderboard-current,
+  .withdraw-card,
+  .withdraw-history {
+    padding: 10px;
+  }
+
+  .task-title {
+    font-size: 15px;
+  }
+
+  .task-description,
+  .leaderboard-tab,
+  .leaderboard-action-button,
+  .withdraw-button,
+  .withdraw-connect {
+    font-size: 12px;
+  }
+
+  .bottom-nav {
+    width: min(calc(100% - 12px), 480px);
+    gap: 5px;
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .nav-item {
+    padding: 9px 3px;
+    font-size: 9px;
+  }
+
+  .nav-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .nav-icon img {
+    width: 14px;
+    height: 14px;
   }
 }
