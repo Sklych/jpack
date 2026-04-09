@@ -659,7 +659,7 @@ def withdraw_request():
         if message == "Withdrawal amount exceeds the per-request limit":
             message = f"Нельзя вывести более {MAX_WITHDRAW_CRYSTALS_PER_REQUEST} за раз."
         elif message == "Pending withdrawal request already exists for this user or wallet":
-            message = "Нельзя создать больше одной транзакции, пока предыдущая в обработке."
+            message = "Подождите, пока обработаем последнюю заявку на вывод."
         return error_response(code, message, status)
 
     updated_user = db.get_user(user_row["tg_uid"])
