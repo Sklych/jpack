@@ -37,6 +37,7 @@ jobs:
           cp styles.css dist/
           cp app.js dist/
           cp background-loop.m4a dist/
+          cp tonconnect-manifest.json dist/
           cp play.svg dist/
           cp upgrade.svg dist/
           cp leaderboard.svg dist/

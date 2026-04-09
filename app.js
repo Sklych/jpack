@@ -1,5 +1,6 @@
 const tg = window.Telegram?.WebApp;
 const API_BASE_URL = "https://lotawo7465.pythonanywhere.com";
+const TONCONNECT_MANIFEST_URL = "https://sklych.github.io/jpack/tonconnect-manifest.json";
 
 if (tg) {
   tg.ready();
@@ -48,6 +49,9 @@ music.preload = "auto";
 music.volume = 0.38;
 music.loop = true;
 
+let tonConnectUI = null;
+let lastTonWalletAddress = "";
+
 const storageKeys = {
   bestScore: "jetpack-pulse-best-score",
   crystals: "jetpack-pulse-crystals",
@@ -70,6 +74,50 @@ function shouldUseMockTasks() {
 
 function getTelegramInitData() {
   return tg?.initData || "";
+}
+
+function getTonWalletAccount() {
+  return tonConnectUI?.wallet?.account || null;
+}
+
+function syncTonWalletState({ showConnectedToast = false } = {}) {
+  const walletAccount = getTonWalletAccount();
+  const nextAddress = walletAccount?.address || "";
+  const shouldNotify = showConnectedToast && nextAddress && nextAddress !== lastTonWalletAddress;
+
+  state.withdraw.walletInfo = walletAccount;
+  lastTonWalletAddress = nextAddress;
+  renderWithdraw();
+
+  if (shouldNotify) {
+    showToast("TON кошелек подключен");
+  }
+}
+
+function ensureTonConnect() {
+  if (shouldUseMockTasks()) {
+    return null;
+  }
+
+  if (tonConnectUI) {
+    return tonConnectUI;
+  }
+
+  if (!window.TON_CONNECT_UI?.TonConnectUI) {
+    throw new Error("TON Connect недоступен");
+  }
+
+  tonConnectUI = new window.TON_CONNECT_UI.TonConnectUI({
+    manifestUrl: TONCONNECT_MANIFEST_URL,
+    language: "ru"
+  });
+
+  syncTonWalletState();
+  tonConnectUI.onStatusChange(() => {
+    syncTonWalletState({ showConnectedToast: true });
+  });
+
+  return tonConnectUI;
 }
 
 function createNetworkError(message) {
@@ -973,10 +1021,23 @@ async function connectTonWallet() {
     return;
   }
 
-  showToast("Подключение TON кошелька добавим следующим шагом");
+  const ui = ensureTonConnect();
+  syncTonWalletState();
+
+  if (ui.wallet?.account) {
+    showToast("TON кошелек подключен");
+    return;
+  }
+
+  await ui.openModal();
 }
 
 async function createWithdrawRequest() {
+  if (!shouldUseMockTasks()) {
+    ensureTonConnect();
+    syncTonWalletState();
+  }
+
   const amount = getWithdrawableAmount();
 
   if (!state.withdraw.walletInfo) {
@@ -1752,6 +1813,14 @@ overlayButton.addEventListener("click", () => {
 });
 
 async function bootstrap() {
+  if (!shouldUseMockTasks()) {
+    try {
+      ensureTonConnect();
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   updateHud();
   renderTasks();
   renderLeaderboard();
