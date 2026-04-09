@@ -1388,6 +1388,26 @@ bindHold(gameFrame, "pointerdown", "pointerup");
 gameFrame.addEventListener("pointerleave", () => setPressing(false));
 gameFrame.addEventListener("pointercancel", () => setPressing(false));
 
+let lastTouchEndAt = 0;
+
+document.addEventListener("touchend", (event) => {
+  const now = Date.now();
+  if (now - lastTouchEndAt < 320) {
+    event.preventDefault();
+  }
+  lastTouchEndAt = now;
+}, { passive: false });
+
+document.addEventListener("dblclick", (event) => {
+  event.preventDefault();
+}, { passive: false });
+
+["gesturestart", "gesturechange", "gestureend"].forEach((eventName) => {
+  document.addEventListener(eventName, (event) => {
+    event.preventDefault();
+  }, { passive: false });
+});
+
 document.addEventListener("keydown", (event) => {
   if (event.code === "Space") {
     event.preventDefault();
