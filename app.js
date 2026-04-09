@@ -1272,7 +1272,7 @@ function showOverlay(mode, payload = {}) {
 
   if (mode === "gameover") {
     overlayTitle.textContent = `Счёт: ${payload.score} м`;
-    overlayText.textContent = `Лучший результат: ${payload.bestScore} м, кристаллы за ран: ${formatTenths(payload.runCrystals)}`;
+    overlayText.textContent = `Лучший результат: ${payload.bestScore} м, заработано кристалов: ${formatTenths(payload.runCrystals)}`;
     overlayButton.textContent = "Ещё раз";
   }
 
@@ -1404,10 +1404,10 @@ async function submitGameFinishInBackground(payload) {
 }
 
 function spawnGate() {
-  const gapHeight = 154 - Math.min(state.score * 0.08, 40);
+  const gapHeight = 158 - Math.min(state.score * 0.05, 26);
   const safeCenter = 120 + Math.random() * (canvas.height - 240);
   const width = 56;
-  const speed = 3.6 + Math.min(state.score * 0.012, 3.5);
+  const speed = 3.2 + Math.min(state.score * 0.0045, 1.8);
 
   state.gates.push({
     x: canvas.width + width,
@@ -1424,7 +1424,7 @@ function spawnShard() {
     x: canvas.width + 34,
     y: 74 + Math.random() * (canvas.height - 148),
     radius: 9,
-    speed: 3.8 + Math.min(state.score * 0.012, 3.4),
+    speed: 3.3 + Math.min(state.score * 0.004, 1.6),
     pulse: Math.random() * Math.PI * 2
   });
 }
@@ -1438,13 +1438,13 @@ function update(deltaMs) {
   state.time += deltaMs;
   state.flash = Math.max(0, state.flash - deltaMs * 0.004);
 
-  const baseSpeed = 0.82 + Math.min(state.score * 0.0018, 0.95);
+  const baseSpeed = 0.78 + Math.min(state.score * 0.001, 0.55);
   state.scoreFloat += baseSpeed * delta;
   state.score = Math.max(0, Math.floor(state.scoreFloat));
-  state.scoreMultiplier = 1 + Math.min(state.score / 180, 4);
+  state.scoreMultiplier = 1 + Math.min(state.score / 240, 4);
 
-  const gravity = 0.42;
-  const thrust = -0.68;
+  const gravity = 0.32;
+  const thrust = -0.56;
   state.player.velocityY += gravity * delta;
 
   if (state.pressing) {
@@ -1457,8 +1457,8 @@ function update(deltaMs) {
     });
   }
 
-  state.player.velocityY = Math.max(-5.8, Math.min(6.6, state.player.velocityY));
-  state.player.y += state.player.velocityY * delta * 2.2;
+  state.player.velocityY = Math.max(-4.8, Math.min(5.2, state.player.velocityY));
+  state.player.y += state.player.velocityY * delta * 1.95;
 
   state.trails.forEach((trail) => {
     trail.x -= 2.3 * delta;
