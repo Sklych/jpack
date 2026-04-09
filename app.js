@@ -91,7 +91,7 @@ async function apiRequest(path, options = {}, fallbackMessage = "Ошибка з
   try {
     response = await fetch(apiUrl(path), options);
   } catch {
-    throw createNetworkError("Проверь сеть");
+    throw createNetworkError("Проверьте подключение к интернету");
   }
 
   let payload = null;
@@ -125,6 +125,19 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function renderScreenState(message, retryAction = "") {
+  const retryButton = retryAction
+    ? `<button class="screen-state-button" type="button" data-retry-action="${escapeHtml(retryAction)}">Повторить</button>`
+    : "";
+
+  return `
+    <article class="screen-state">
+      <p>${escapeHtml(message)}</p>
+      ${retryButton}
+    </article>
+  `;
 }
 
 let toastTimer = 0;
@@ -358,6 +371,14 @@ const state = {
     referrals: null,
     distance: null
   },
+  leaderboardStatus: {
+    referrals: "idle",
+    distance: "idle"
+  },
+  leaderboardErrors: {
+    referrals: "",
+    distance: ""
+  },
   withdraw: {
     balance: normalizeTenths(Number(localStorage.getItem(storageKeys.crystals) || 0)),
     minAmount: 10,
@@ -367,13 +388,19 @@ const state = {
     walletInfo: null,
     items: null
   },
+  withdrawStatus: "idle",
+  withdrawError: "",
+  authStatus: shouldUseMockTasks() ? "ready" : "loading",
+  authError: "",
+  serverBestScore: Number(localStorage.getItem(storageKeys.bestScore) || 0),
+  finishRequestCounter: 0,
+  finishAppliedCounter: 0,
   score: 0,
   scoreFloat: 0,
   scoreMultiplier: 1,
   runCrystals: 0,
   runCrystalsEarned: 0,
   overlayMode: "ready",
-  pendingFinishPayload: null,
   initReady: shouldUseMockTasks(),
   paused: false,
   running: false,
@@ -451,6 +478,23 @@ function renderTasks() {
     return;
   }
 
+  if (state.authStatus === "loading" && state.tasks.length === 0) {
+    tasksList.innerHTML = renderScreenState("Загружаем данные...");
+    return;
+  }
+
+  if (state.authStatus === "error" && state.tasks.length === 0) {
+    tasksList.innerHTML = renderScreenState(
+      "Проверьте подключение к интернету",
+      "retry-auth"
+    );
+    const retryButton = tasksList.querySelector("[data-retry-action='retry-auth']");
+    retryButton?.addEventListener("click", () => {
+      void initializeHomeState();
+    });
+    return;
+  }
+
   tasksList.innerHTML = state.tasks.map((task) => {
     const statusClass = task.status === "completed" ? "task-status-completed" : "task-status-pending";
     const statusLabel = task.status === "completed" ? "Выполнено" : "Не выполнено";
@@ -514,14 +558,31 @@ function renderLeaderboard() {
   }
 
   const payload = state.leaderboards[state.leaderboardKind];
+  const status = state.leaderboardStatus[state.leaderboardKind];
+  const errorMessage = state.leaderboardErrors[state.leaderboardKind];
 
   leaderboardTabButtons.forEach((button) => {
     button.classList.toggle("leaderboard-tab-active", button.dataset.leaderboardKind === state.leaderboardKind);
   });
 
-  if (!payload) {
-    leaderboardList.innerHTML = `<article class="leaderboard-row"><div class="leaderboard-position">-</div><div class="leaderboard-user"><div class="leaderboard-user-meta"><p class="leaderboard-name">Загрузка</p><p class="leaderboard-subtitle">Подтягиваем рейтинг</p></div></div><p class="leaderboard-value">...</p></article>`;
+  if ((status === "idle" || status === "loading") && !payload) {
+    leaderboardList.innerHTML = renderScreenState("Загружаем данные...");
     leaderboardCurrent.innerHTML = "";
+    if (leaderboardReferralActions) {
+      leaderboardReferralActions.classList.toggle("leaderboard-actions-hidden", state.leaderboardKind !== "referrals");
+    }
+    return;
+  }
+
+  if (status === "error" && !payload) {
+    leaderboardList.innerHTML = renderScreenState(
+      errorMessage || "Проверьте подключение к интернету",
+      "retry-leaderboard"
+    );
+    leaderboardCurrent.innerHTML = "";
+    leaderboardList.querySelector("[data-retry-action='retry-leaderboard']")?.addEventListener("click", () => {
+      void ensureLeaderboardLoaded(state.leaderboardKind, true);
+    });
     if (leaderboardReferralActions) {
       leaderboardReferralActions.classList.toggle("leaderboard-actions-hidden", state.leaderboardKind !== "referrals");
     }
@@ -551,6 +612,7 @@ function applyAuthPayload(payload) {
     }
     if (typeof payload.user.bestScore === "number") {
       state.bestScore = payload.user.bestScore;
+      state.serverBestScore = payload.user.bestScore;
     }
   }
 
@@ -573,8 +635,11 @@ function applyAuthPayload(payload) {
   }
 
   state.withdraw.balance = state.crystals;
+  state.authStatus = "ready";
+  state.authError = "";
   state.initReady = true;
   updateHud();
+  renderTasks();
   savePersistentState();
 }
 
@@ -597,12 +662,16 @@ async function loadAuthPayload() {
 
 async function initializeHomeState() {
   if (shouldUseMockTasks()) {
+    state.authStatus = "ready";
     applyTasksPayload(buildMockTasksPayload());
     state.initReady = true;
     showOverlay("ready");
     return;
   }
 
+  state.authStatus = "loading";
+  state.authError = "";
+  renderTasks();
   showOverlay("loading");
 
   try {
@@ -611,9 +680,12 @@ async function initializeHomeState() {
     showOverlay("ready");
   } catch (error) {
     console.error(error);
+    state.authStatus = "error";
+    state.authError = error.isNetworkError ? "Проверьте подключение к интернету" : error.message;
     state.initReady = false;
+    renderTasks();
     showOverlay("authError", {
-      message: error.isNetworkError ? "Проверь сеть и нажми повторить." : error.message
+      message: state.authError
     });
   }
 }
@@ -676,6 +748,22 @@ function renderWithdraw() {
     ? state.withdraw.processingText
     : "Подключи TON кошелек";
 
+  if (state.withdrawStatus === "loading" && !state.withdraw.items) {
+    withdrawHistory.innerHTML = renderScreenState("Загружаем данные...");
+    return;
+  }
+
+  if (state.withdrawStatus === "error" && !state.withdraw.items) {
+    withdrawHistory.innerHTML = renderScreenState(
+      state.withdrawError || "Проверьте подключение к интернету",
+      "retry-withdraw"
+    );
+    withdrawHistory.querySelector("[data-retry-action='retry-withdraw']")?.addEventListener("click", () => {
+      void ensureWithdrawLoaded(true);
+    });
+    return;
+  }
+
   const items = state.withdraw.items || [];
   if (items.length === 0) {
     withdrawHistory.innerHTML = `
@@ -716,62 +804,51 @@ async function loadWithdrawPayload() {
     return buildMockWithdrawPayload();
   }
 
-  const [authResponse, historyResponse] = await Promise.all([
-    fetch(apiUrl("/api/auth/init"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Telegram-Init-Data": tg?.initData || ""
+  const [authData, historyData] = await Promise.all([
+    loadAuthPayload(),
+    apiRequest(
+      "/api/withdraw/history",
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Telegram-Init-Data": getTelegramInitData()
+        }
       },
-      body: JSON.stringify({
-        initData: tg?.initData || ""
-      })
-    }),
-    fetch(apiUrl("/api/withdraw/history"), {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Telegram-Init-Data": tg?.initData || ""
-      }
-    })
+      "Не удалось загрузить историю вывода."
+    )
   ]);
 
-  const authPayload = await authResponse.json();
-  const historyPayload = await historyResponse.json();
-
-  if (!authResponse.ok || !authPayload.ok) {
-    throw new Error(authPayload?.error?.message || "Не удалось загрузить вывод.");
-  }
-  if (!historyResponse.ok || !historyPayload.ok) {
-    throw new Error(historyPayload?.error?.message || "Не удалось загрузить историю вывода.");
-  }
-
   return {
-    balance: authPayload.data.user?.balance ?? state.crystals,
-    minAmount: authPayload.data.withdraw?.minAmount ?? state.withdraw.minAmount,
-    maxAmount: authPayload.data.withdraw?.maxAmount ?? state.withdraw.maxAmount,
-    tonRatePerCrystal: authPayload.data.withdraw?.tonRatePerCrystal ?? state.withdraw.tonRatePerCrystal,
-    processingText: authPayload.data.withdraw?.processingText ?? state.withdraw.processingText,
+    balance: authData.user?.balance ?? state.crystals,
+    minAmount: authData.withdraw?.minAmount ?? state.withdraw.minAmount,
+    maxAmount: authData.withdraw?.maxAmount ?? state.withdraw.maxAmount,
+    tonRatePerCrystal: authData.withdraw?.tonRatePerCrystal ?? state.withdraw.tonRatePerCrystal,
+    processingText: authData.withdraw?.processingText ?? state.withdraw.processingText,
     walletInfo: state.withdraw.walletInfo,
-    items: historyPayload.data.items || []
+    items: historyData.items || []
   };
 }
 
-async function ensureWithdrawLoaded() {
-  if (state.withdraw.items) {
+async function ensureWithdrawLoaded(forceReload = false) {
+  if (!forceReload && state.withdraw.items) {
     renderWithdraw();
     return;
   }
 
+  state.withdrawStatus = "loading";
+  state.withdrawError = "";
   renderWithdraw();
 
   try {
     const payload = await loadWithdrawPayload();
+    state.withdrawStatus = "ready";
     applyWithdrawPayload(payload);
   } catch (error) {
     console.error(error);
-    showToast(error.message || "Ошибка загрузки");
-    applyWithdrawPayload(buildMockWithdrawPayload());
+    state.withdrawStatus = "error";
+    state.withdrawError = error.isNetworkError ? "Проверьте подключение к интернету" : (error.message || "Проверьте подключение к интернету");
+    renderWithdraw();
   }
 }
 
@@ -780,35 +857,38 @@ async function loadLeaderboardPayload(kind) {
     return buildMockLeaderboardPayload(kind);
   }
 
-  const response = await fetch(apiUrl(`/api/leaderboard?kind=${encodeURIComponent(kind)}`), {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Telegram-Init-Data": tg?.initData || ""
-    }
-  });
-  const payload = await response.json();
-  if (!response.ok || !payload.ok) {
-    throw new Error(payload?.error?.message || "Не удалось загрузить лидеров.");
-  }
-  return payload.data;
+  return apiRequest(
+    `/api/leaderboard?kind=${encodeURIComponent(kind)}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-Init-Data": getTelegramInitData()
+      }
+    },
+    "Не удалось загрузить лидеров."
+  );
 }
 
-async function ensureLeaderboardLoaded(kind = state.leaderboardKind) {
-  if (state.leaderboards[kind]) {
+async function ensureLeaderboardLoaded(kind = state.leaderboardKind, forceReload = false) {
+  if (!forceReload && state.leaderboards[kind]) {
     renderLeaderboard();
     return;
   }
 
+  state.leaderboardStatus[kind] = "loading";
+  state.leaderboardErrors[kind] = "";
   renderLeaderboard();
 
   try {
     const payload = await loadLeaderboardPayload(kind);
+    state.leaderboardStatus[kind] = "ready";
     applyLeaderboardPayload(payload);
   } catch (error) {
     console.error(error);
-    showToast(error.message || "Ошибка загрузки");
-    applyLeaderboardPayload(buildMockLeaderboardPayload(kind));
+    state.leaderboardStatus[kind] = "error";
+    state.leaderboardErrors[kind] = error.isNetworkError ? "Проверьте подключение к интернету" : (error.message || "Проверьте подключение к интернету");
+    renderLeaderboard();
   }
 }
 
@@ -1058,7 +1138,6 @@ navItems.forEach((item) => {
 leaderboardTabButtons.forEach((button) => {
   button.addEventListener("click", () => {
     state.leaderboardKind = button.dataset.leaderboardKind;
-    renderLeaderboard();
     ensureLeaderboardLoaded(state.leaderboardKind);
   });
 });
@@ -1145,28 +1224,15 @@ function showOverlay(mode, payload = {}) {
   }
 
   if (mode === "loading") {
-    overlayTitle.textContent = "Загрузка";
-    overlayText.textContent = "Подтягиваем профиль и состояние игры.";
+    overlayTitle.textContent = "Загружаем данные...";
+    overlayText.textContent = "";
     overlayButton.textContent = "Подождите";
     overlayButton.disabled = true;
   }
 
   if (mode === "authError") {
     overlayTitle.textContent = "Ошибка при загрузке";
-    overlayText.textContent = payload.message || "Проверь сеть и нажми повторить.";
-    overlayButton.textContent = "Повторить";
-  }
-
-  if (mode === "saving") {
-    overlayTitle.textContent = "Сохраняем результат";
-    overlayText.textContent = "Подожди пару секунд.";
-    overlayButton.textContent = "Подождите";
-    overlayButton.disabled = true;
-  }
-
-  if (mode === "finishError") {
-    overlayTitle.textContent = "Не удалось сохранить результат";
-    overlayText.textContent = payload.message || "Проверь сеть и нажми повторить.";
+    overlayText.textContent = payload.message || "Проверьте подключение к интернету";
     overlayButton.textContent = "Повторить";
   }
 }
@@ -1213,16 +1279,20 @@ function endRun() {
     runCrystals: normalizeTenths(state.runCrystalsEarned),
     crystalsEarned: normalizeTenths(state.runCrystalsEarned)
   };
-
-  state.pendingFinishPayload = finishPayload;
+  const shouldSkipSave = finishPayload.crystalsEarned <= 0 && finishPayload.score <= state.serverBestScore;
 
   if (shouldUseMockTasks()) {
-    state.pendingFinishPayload = null;
     showOverlay("gameover", finishPayload);
     return;
   }
 
-  void submitPendingFinishResult();
+  showOverlay("gameover", finishPayload);
+
+  if (shouldSkipSave) {
+    return;
+  }
+
+  void submitGameFinishInBackground(finishPayload);
 }
 
 async function submitGameFinish(payload) {
@@ -1251,6 +1321,7 @@ function applyGameFinishPayload(responseData) {
     }
     if (typeof responseData.user.bestScore === "number") {
       state.bestScore = responseData.user.bestScore;
+      state.serverBestScore = responseData.user.bestScore;
     }
   }
 
@@ -1259,28 +1330,17 @@ function applyGameFinishPayload(responseData) {
   savePersistentState();
 }
 
-async function submitPendingFinishResult() {
-  const payload = state.pendingFinishPayload;
-  if (!payload) {
-    return;
-  }
-
-  showOverlay("saving");
-
+async function submitGameFinishInBackground(payload) {
+  const requestId = ++state.finishRequestCounter;
   try {
     const responseData = await submitGameFinish(payload);
-    applyGameFinishPayload(responseData);
-    state.pendingFinishPayload = null;
-    showOverlay("gameover", {
-      score: payload.score,
-      bestScore: state.bestScore,
-      runCrystals: payload.runCrystals
-    });
+    if (requestId >= state.finishAppliedCounter) {
+      state.finishAppliedCounter = requestId;
+      applyGameFinishPayload(responseData);
+    }
   } catch (error) {
     console.error(error);
-    showOverlay("finishError", {
-      message: error.isNetworkError ? "Проверь сеть и нажми повторить." : error.message
-    });
+    showToast(error.isNetworkError ? "Проверьте подключение к интернету" : (error.message || "Проверьте подключение к интернету"));
   }
 }
 
@@ -1591,7 +1651,7 @@ function bindHold(target, startEvent, endEvent) {
   target.addEventListener(startEvent, (event) => {
     event.preventDefault();
 
-    if (!state.initReady || state.overlayMode === "loading" || state.overlayMode === "saving" || state.overlayMode === "finishError" || state.overlayMode === "authError") {
+    if (!state.initReady || state.overlayMode === "loading" || state.overlayMode === "authError") {
       return;
     }
 
@@ -1640,7 +1700,7 @@ document.addEventListener("keydown", (event) => {
   if (event.code === "Space") {
     event.preventDefault();
 
-    if (!state.initReady || state.overlayMode === "loading" || state.overlayMode === "saving" || state.overlayMode === "finishError" || state.overlayMode === "authError") {
+    if (!state.initReady || state.overlayMode === "loading" || state.overlayMode === "authError") {
       return;
     }
 
@@ -1669,12 +1729,7 @@ overlayButton.addEventListener("click", () => {
     return;
   }
 
-  if (state.overlayMode === "finishError") {
-    void submitPendingFinishResult();
-    return;
-  }
-
-  if (state.overlayMode === "loading" || state.overlayMode === "saving" || !state.initReady) {
+  if (state.overlayMode === "loading" || !state.initReady) {
     return;
   }
 
@@ -1690,6 +1745,9 @@ overlayButton.addEventListener("click", () => {
 
 async function bootstrap() {
   updateHud();
+  renderTasks();
+  renderLeaderboard();
+  renderWithdraw();
   showOverlay(shouldUseMockTasks() ? "ready" : "loading");
   render();
 

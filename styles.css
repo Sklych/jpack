@@ -185,6 +185,13 @@ button {
   gap: 12px;
 }
 
+.leaderboard-note {
+  margin: -2px 2px 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .leaderboard-actions-hidden {
   display: none;
 }
@@ -442,6 +449,29 @@ button {
 .task-card {
   border-radius: 22px;
   padding: 16px;
+}
+
+.screen-state {
+  border: 1px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(29, 16, 52, 0.96), rgba(15, 10, 28, 0.98));
+  box-shadow: var(--shadow);
+  border-radius: 22px;
+  padding: 20px 16px;
+  text-align: center;
+}
+
+.screen-state p {
+  margin: 0;
+  color: var(--text);
+}
+
+.screen-state-button {
+  margin-top: 14px;
+  border: 1px solid var(--stroke-strong);
+  border-radius: 999px;
+  padding: 11px 16px;
+  background: linear-gradient(180deg, rgba(176, 101, 255, 0.3), rgba(96, 43, 183, 0.54));
+  color: var(--text);
 }
 
 .task-card-head,
@@ -718,7 +748,8 @@ button {
   .leaderboard-list,
   .leaderboard-current,
   .withdraw-card,
-  .withdraw-history {
+  .withdraw-history,
+  .screen-state {
     border-radius: 20px;
   }
 
@@ -794,6 +825,10 @@ button {
 
   .task-card {
     padding: 12px;
+  }
+
+  .leaderboard-note {
+    font-size: 12px;
   }
 
   .task-card-head,
