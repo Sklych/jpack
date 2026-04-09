@@ -527,6 +527,16 @@ button {
     linear-gradient(180deg, #170b27 0%, #09060f 100%);
   min-height: 520px;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-frame * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 #gameCanvas {
@@ -603,23 +613,29 @@ button {
   left: 50%;
   bottom: 0;
   transform: translateX(-50%);
-  width: min(100%, 480px);
-  gap: 10px;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  width: min(calc(100% - 20px), 480px);
+  gap: 8px;
+  padding: 12px 10px calc(12px + env(safe-area-inset-bottom));
   background: linear-gradient(180deg, rgba(9, 6, 15, 0), rgba(9, 6, 15, 0.95) 36%);
 }
 
 .nav-item {
   flex: 1;
+  min-width: 0;
   border: 1px solid rgba(215, 176, 255, 0.14);
   background: rgba(20, 11, 35, 0.84);
   color: var(--muted);
   border-radius: 20px;
-  padding: 12px 8px;
+  padding: 11px 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.05;
 }
 
 .nav-item-active {
@@ -692,5 +708,26 @@ button {
   .task-card-head,
   .task-reward-row {
     flex-direction: column;
+  }
+
+  .bottom-nav {
+    width: min(calc(100% - 16px), 480px);
+    gap: 6px;
+    padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .nav-item {
+    padding: 10px 4px;
+    font-size: 10px;
+  }
+
+  .nav-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .nav-icon img {
+    width: 16px;
+    height: 16px;
   }
 }
