@@ -1089,7 +1089,7 @@ async function createWithdrawRequest() {
   const nextItems = [
     {
       id: payload.requestId,
-      amount,
+      amount: typeof payload.amount === "number" ? payload.amount : amount,
       walletAddress: payload.walletAddress,
       status: payload.status,
       createdAt: new Date().toISOString(),

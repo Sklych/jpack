@@ -592,6 +592,9 @@ def withdraw_request():
     except ValueError:
         return error_response("WITHDRAW_AMOUNT_INVALID", "Некорректная сумма вывода.", 400)
 
+    max_amount_tenths = decimal_to_tenths(MAX_WITHDRAW_CRYSTALS_PER_REQUEST)
+    effective_amount_tenths = min(amount_tenths, max_amount_tenths)
+
     if tenths_to_number(amount_tenths) < MIN_WITHDRAW_CRYSTALS:
         return error_response(
             "WITHDRAW_AMOUNT_TOO_SMALL",
@@ -602,9 +605,9 @@ def withdraw_request():
     try:
         result = db.create_withdrawal_request(
             uid=user_row["tg_uid"],
-            amount_tenths=amount_tenths,
+            amount_tenths=effective_amount_tenths,
             wallet_info=wallet_info,
-            max_amount_tenths=decimal_to_tenths(MAX_WITHDRAW_CRYSTALS_PER_REQUEST),
+            max_amount_tenths=max_amount_tenths,
             note=WITHDRAWAL_NOTE,
         )
     except ValueError as error:
@@ -631,6 +634,7 @@ def withdraw_request():
         {
             "requestId": result.request_id,
             "status": "pending",
+            "amount": tenths_to_number(effective_amount_tenths),
             "walletAddress": result.wallet_address,
             "balance": tenths_to_number(result.remaining_balance_tenths),
             "processingText": WITHDRAWAL_NOTE,
