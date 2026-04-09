@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Джетпак Пульс</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <main class="screen-stack">
+      <section class="screen screen-active" data-screen="home">
+        <section class="stats-grid">
+          <article class="stat-card">
+            <span class="stat-label">Кристаллы</span>
+            <strong class="stat-value" id="crystalsValue">0</strong>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Множитель кристаллов</span>
+            <strong class="stat-value" id="crystalMultiplierValue">x1.0</strong>
+          </article>
+        </section>
+
+        <section class="game-panel">
+          <div class="game-frame" id="gameFrame">
+            <canvas id="gameCanvas" width="360" height="520" aria-label="Игровое поле джетпака"></canvas>
+
+            <div class="game-hud">
+              <div class="game-chip">
+                <span>Счёт</span>
+                <strong id="scoreValue">0 м</strong>
+              </div>
+              <div class="game-chip">
+                <span>Множитель</span>
+                <strong id="runMultiplierValue">x1.0</strong>
+              </div>
+            </div>
+
+            <div class="game-overlay" id="gameOverlay">
+              <div class="overlay-card">
+                <h3 id="overlayTitle">Удерживай экран, чтобы лететь вверх</h3>
+                <p id="overlayText">
+                  Уклоняйся от лазерных ворот. Чем дальше пролетаешь, тем выше множитель очков.
+                </p>
+                <button class="overlay-button" id="overlayButton" type="button">Старт</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="screen" data-screen="tasks">
+        <section class="tasks-panel">
+          <div class="tasks-summary">
+            <article class="task-summary-card">
+              <span class="stat-label">Кристаллы</span>
+              <strong class="stat-value" id="tasksCrystalsValue">0</strong>
+            </article>
+            <article class="task-summary-card">
+              <span class="stat-label">Текущий множитель</span>
+              <strong class="stat-value" id="tasksMultiplierValue">x1.0</strong>
+            </article>
+            <article class="task-summary-card">
+              <span class="stat-label">Приглашено</span>
+              <strong class="stat-value" id="tasksReferralCountValue">0</strong>
+            </article>
+          </div>
+
+          <div class="tasks-list" id="tasksList"></div>
+        </section>
+      </section>
+
+      <section class="screen" data-screen="leaderboard">
+        <section class="leaderboard-panel">
+          <div class="leaderboard-tabs">
+            <button class="leaderboard-tab leaderboard-tab-active" type="button" data-leaderboard-kind="referrals">
+              Друзья
+            </button>
+            <button class="leaderboard-tab" type="button" data-leaderboard-kind="distance">
+              Дистанция
+            </button>
+          </div>
+
+          <div class="leaderboard-actions" id="leaderboardReferralActions">
+            <button class="leaderboard-action-button" type="button" id="copyInviteButton">
+              Копировать ссылку
+            </button>
+            <button class="leaderboard-action-button leaderboard-action-button-primary" type="button" id="shareInviteButton">
+              Позвать друга
+            </button>
+          </div>
+
+          <div class="leaderboard-list" id="leaderboardList"></div>
+          <div class="leaderboard-current" id="leaderboardCurrent"></div>
+        </section>
+      </section>
+
+      <section class="screen" data-screen="withdraw">
+        <section class="withdraw-panel">
+          <article class="withdraw-card">
+            <div class="withdraw-card-head">
+              <div>
+                <h2>Вывод</h2>
+              </div>
+              <div class="withdraw-balance">
+                <span class="stat-label">Баланс</span>
+                <strong class="stat-value" id="withdrawBalanceValue">0</strong>
+              </div>
+            </div>
+
+            <button class="withdraw-button" type="button" id="withdrawButton">
+              Вывести 0 кристаллов • 0 TON
+            </button>
+            <button class="withdraw-connect" type="button" id="connectWalletButton">
+              Подключить TON кошелек
+            </button>
+            <p class="withdraw-hint" id="withdrawHint">Вывод обрабатывается до 24 часов.</p>
+          </article>
+
+          <section class="withdraw-history" id="withdrawHistory"></section>
+        </section>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Основная навигация">
+      <button class="nav-item nav-item-active" type="button" data-target="home">
+        <span class="nav-icon">
+          <img src="./play.svg" alt="" aria-hidden="true">
+        </span>
+        <span>Играть</span>
+      </button>
+      <button class="nav-item" type="button" data-target="tasks">
+        <span class="nav-icon">
+          <img src="./upgrade.svg" alt="" aria-hidden="true">
+        </span>
+        <span>Улучшения</span>
+      </button>
+      <button class="nav-item" type="button" data-target="leaderboard">
+        <span class="nav-icon">
+          <img src="./leaderboard.svg" alt="" aria-hidden="true">
+        </span>
+        <span>Лидеры</span>
+      </button>
+      <button class="nav-item" type="button" data-target="withdraw">
+        <span class="nav-icon">
+          <img src="./cashout.svg" alt="" aria-hidden="true">
+        </span>
+        <span>Вывод</span>
+      </button>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
