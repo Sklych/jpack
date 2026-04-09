@@ -1,4 +1,5 @@
 const tg = window.Telegram?.WebApp;
+const API_BASE_URL = "https://lotawo7465.pythonanywhere.com";
 
 if (tg) {
   tg.ready();
@@ -76,11 +77,19 @@ function createNetworkError(message) {
   return error;
 }
 
+function apiUrl(path) {
+  if (/^https?:\/\//.test(path)) {
+    return path;
+  }
+
+  return `${API_BASE_URL}${path}`;
+}
+
 async function apiRequest(path, options = {}, fallbackMessage = "Ошибка запроса") {
   let response;
 
   try {
-    response = await fetch(path, options);
+    response = await fetch(apiUrl(path), options);
   } catch {
     throw createNetworkError("Проверь сеть");
   }
@@ -708,7 +717,7 @@ async function loadWithdrawPayload() {
   }
 
   const [authResponse, historyResponse] = await Promise.all([
-    fetch("/api/auth/init", {
+    fetch(apiUrl("/api/auth/init"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -718,7 +727,7 @@ async function loadWithdrawPayload() {
         initData: tg?.initData || ""
       })
     }),
-    fetch("/api/withdraw/history", {
+    fetch(apiUrl("/api/withdraw/history"), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -771,7 +780,7 @@ async function loadLeaderboardPayload(kind) {
     return buildMockLeaderboardPayload(kind);
   }
 
-  const response = await fetch(`/api/leaderboard?kind=${encodeURIComponent(kind)}`, {
+  const response = await fetch(apiUrl(`/api/leaderboard?kind=${encodeURIComponent(kind)}`), {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -821,7 +830,7 @@ async function loadTasksPayload() {
     return buildMockTasksPayload();
   }
 
-  const response = await fetch("/api/tasks", {
+  const response = await fetch(apiUrl("/api/tasks"), {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -915,7 +924,7 @@ async function createWithdrawRequest() {
     return;
   }
 
-  const response = await fetch("/api/withdraw/request", {
+  const response = await fetch(apiUrl("/api/withdraw/request"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -968,7 +977,7 @@ async function completeTask(task) {
     return buildMockTasksPayload();
   }
 
-  const response = await fetch("/api/tasks/complete-task", {
+  const response = await fetch(apiUrl("/api/tasks/complete-task"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
