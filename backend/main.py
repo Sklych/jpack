@@ -566,6 +566,40 @@ def create_task():
     )
 
 
+@app.route("/api/admin/users/set-balance", methods=["POST"])
+def admin_set_user_balance():
+    admin_error = require_admin_token()
+    if admin_error:
+        return admin_error
+
+    payload = request.get_json(silent=True) or {}
+    uid = str(payload.get("uid") or payload.get("userId") or "").strip()
+    balance = payload.get("balance")
+
+    if not uid:
+        return error_response("UID_REQUIRED", "Нужно передать uid.", 400)
+    if balance is None:
+        return error_response("BALANCE_REQUIRED", "Нужно передать balance.", 400)
+
+    try:
+        balance_tenths = decimal_to_tenths(balance)
+    except ValueError:
+        return error_response("BALANCE_INVALID", "Некорректное значение balance.", 400)
+
+    if balance_tenths < 0:
+        return error_response("BALANCE_INVALID", "balance не может быть отрицательным.", 400)
+
+    user_row = db.set_user_balance_tenths(uid, balance_tenths)
+    if not user_row:
+        return error_response("USER_NOT_FOUND", "Пользователь не найден.", 404)
+
+    return ok(
+        {
+            "user": serialize_user(user_row),
+        }
+    )
+
+
 @app.route("/api/withdraw/request", methods=["POST"])
 def withdraw_request():
     auth_result, auth_error = get_authenticated_user()

@@ -251,6 +251,23 @@ class Database:
                 (str(uid),),
             ).fetchone()
 
+    def set_user_balance_tenths(self, uid: str, balance_tenths: int) -> sqlite3.Row | None:
+        uid = str(uid)
+        with _lock:
+            with self.connection() as conn:
+                conn.execute(
+                    """
+                    UPDATE users
+                    SET crystals_balance_tenths = ?, updated_at = ?
+                    WHERE tg_uid = ?
+                    """,
+                    (int(balance_tenths), now_iso(), uid),
+                )
+                return conn.execute(
+                    "SELECT * FROM users WHERE tg_uid = ?",
+                    (uid,),
+                ).fetchone()
+
     def link_referral(self, referrer_uid: str | None, referred_uid: str) -> bool:
         if not referrer_uid:
             return False
