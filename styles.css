@@ -377,7 +377,8 @@ button {
 
 .withdraw-row-title,
 .withdraw-row-subtitle,
-.withdraw-row-value {
+.withdraw-row-value,
+.withdraw-row-ton {
   margin: 0;
 }
 
@@ -404,6 +405,17 @@ button {
 .withdraw-row-value {
   text-align: right;
   font-weight: 700;
+}
+
+.withdraw-row-value-group {
+  text-align: right;
+}
+
+.withdraw-row-ton {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .withdraw-status {

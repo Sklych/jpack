@@ -766,6 +766,8 @@ function renderWithdrawHistoryItem(item) {
   const statusLabel = isCompleted ? "Выполнено" : "В обработке";
   const dateLabel = isCompleted ? item.completedAt || item.createdAt : item.createdAt;
   const titleClass = isCompleted ? "withdraw-row-title-completed" : "withdraw-row-title-pending";
+  const tonAmount = formatTon(item.amount * state.withdraw.tonRatePerCrystal);
+  const tonLabel = isCompleted ? `${tonAmount} TON выплачено` : `${tonAmount} TON к выплате`;
 
   return `
     <article class="withdraw-row">
@@ -773,7 +775,10 @@ function renderWithdrawHistoryItem(item) {
         <p class="withdraw-row-title ${titleClass}">${statusLabel}</p>
         <p class="withdraw-row-subtitle">${escapeHtml(formatWithdrawDate(dateLabel))}</p>
       </div>
-      <p class="withdraw-row-value">${escapeHtml(`${formatTenths(item.amount)} кристаллов`)}</p>
+      <div class="withdraw-row-value-group">
+        <p class="withdraw-row-value">${escapeHtml(`${formatTenths(item.amount)} кристаллов`)}</p>
+        <p class="withdraw-row-ton">${escapeHtml(tonLabel)}</p>
+      </div>
     </article>
   `;
 }
