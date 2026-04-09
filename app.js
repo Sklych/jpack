@@ -9,6 +9,7 @@ if (tg) {
 }
 
 const TASKS_FORCE_MOCK = new URLSearchParams(window.location.search).get("mockTasks") === "1";
+const REQUEST_TIMEOUT_MS = 20_000;
 
 const navItems = [...document.querySelectorAll(".nav-item")];
 const screens = [...document.querySelectorAll(".screen")];
@@ -87,11 +88,20 @@ function apiUrl(path) {
 
 async function apiRequest(path, options = {}, fallbackMessage = "Ошибка запроса") {
   let response;
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
 
   try {
-    response = await fetch(apiUrl(path), options);
+    response = await fetch(apiUrl(path), {
+      ...options,
+      signal: controller.signal
+    });
   } catch {
     throw createNetworkError("Проверьте подключение к интернету");
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 
   let payload = null;
@@ -910,18 +920,17 @@ async function loadTasksPayload() {
     return buildMockTasksPayload();
   }
 
-  const response = await fetch(apiUrl("/api/tasks"), {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Telegram-Init-Data": tg?.initData || ""
-    }
-  });
-  const payload = await response.json();
-  if (!response.ok || !payload.ok) {
-    throw new Error(payload?.error?.message || "Не удалось загрузить задания.");
-  }
-  return payload.data;
+  return apiRequest(
+    "/api/tasks",
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-Init-Data": getTelegramInitData()
+      }
+    },
+    "Не удалось загрузить задания."
+  );
 }
 
 function openSharePrompt() {
@@ -1004,29 +1013,29 @@ async function createWithdrawRequest() {
     return;
   }
 
-  const response = await fetch(apiUrl("/api/withdraw/request"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Telegram-Init-Data": tg?.initData || ""
+  const payload = await apiRequest(
+    "/api/withdraw/request",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-Init-Data": getTelegramInitData()
+      },
+      body: JSON.stringify({
+        initData: getTelegramInitData(),
+        amount,
+        wallet_info: state.withdraw.walletInfo
+      })
     },
-    body: JSON.stringify({
-      initData: tg?.initData || "",
-      amount,
-      wallet_info: state.withdraw.walletInfo
-    })
-  });
-  const payload = await response.json();
-  if (!response.ok || !payload.ok) {
-    throw new Error(payload?.error?.message || "Не удалось создать заявку на вывод.");
-  }
+    "Не удалось создать заявку на вывод."
+  );
 
   const nextItems = [
     {
-      id: payload.data.requestId,
+      id: payload.requestId,
       amount,
-      walletAddress: payload.data.walletAddress,
-      status: payload.data.status,
+      walletAddress: payload.walletAddress,
+      status: payload.status,
       createdAt: new Date().toISOString(),
       completedAt: null
     },
@@ -1034,11 +1043,11 @@ async function createWithdrawRequest() {
   ];
 
   applyWithdrawPayload({
-    balance: payload.data.balance,
+    balance: payload.balance,
     minAmount: state.withdraw.minAmount,
     maxAmount: state.withdraw.maxAmount,
     tonRatePerCrystal: state.withdraw.tonRatePerCrystal,
-    processingText: payload.data.processingText || state.withdraw.processingText,
+    processingText: payload.processingText || state.withdraw.processingText,
     walletInfo: state.withdraw.walletInfo,
     items: nextItems
   });
@@ -1057,22 +1066,21 @@ async function completeTask(task) {
     return buildMockTasksPayload();
   }
 
-  const response = await fetch(apiUrl("/api/tasks/complete-task"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Telegram-Init-Data": tg?.initData || ""
+  return apiRequest(
+    "/api/tasks/complete-task",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-Init-Data": getTelegramInitData()
+      },
+      body: JSON.stringify({
+        initData: getTelegramInitData(),
+        taskId: task?.id || ""
+      })
     },
-    body: JSON.stringify({
-      initData: tg?.initData || "",
-      taskId: task?.id || ""
-    })
-  });
-  const payload = await response.json();
-  if (!response.ok || !payload.ok) {
-    throw new Error(payload?.error?.message || "Не удалось завершить задание.");
-  }
-  return payload.data;
+    "Не удалось завершить задание."
+  );
 }
 
 async function handleTaskAction(taskId) {
