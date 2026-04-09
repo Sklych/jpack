@@ -66,6 +66,41 @@ function shouldUseMockTasks() {
   return TASKS_FORCE_MOCK || !tg?.initData;
 }
 
+function getTelegramInitData() {
+  return tg?.initData || "";
+}
+
+function createNetworkError(message) {
+  const error = new Error(message);
+  error.isNetworkError = true;
+  return error;
+}
+
+async function apiRequest(path, options = {}, fallbackMessage = "Ошибка запроса") {
+  let response;
+
+  try {
+    response = await fetch(path, options);
+  } catch {
+    throw createNetworkError("Проверь сеть");
+  }
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok || !payload?.ok) {
+    const error = new Error(payload?.error?.message || fallbackMessage);
+    error.code = payload?.error?.code || "REQUEST_FAILED";
+    throw error;
+  }
+
+  return payload.data;
+}
+
 function normalizeTenths(value) {
   return Math.round(value * 10) / 10;
 }
@@ -327,6 +362,10 @@ const state = {
   scoreFloat: 0,
   scoreMultiplier: 1,
   runCrystals: 0,
+  runCrystalsEarned: 0,
+  overlayMode: "ready",
+  pendingFinishPayload: null,
+  initReady: shouldUseMockTasks(),
   paused: false,
   running: false,
   pressing: false,
@@ -494,6 +533,80 @@ function applyLeaderboardPayload(payload) {
     state.inviteUrl = payload.inviteUrl;
   }
   renderLeaderboard();
+}
+
+function applyAuthPayload(payload) {
+  if (payload.user) {
+    if (typeof payload.user.balance === "number") {
+      state.crystals = normalizeTenths(payload.user.balance);
+    }
+    if (typeof payload.user.bestScore === "number") {
+      state.bestScore = payload.user.bestScore;
+    }
+  }
+
+  if (payload.referral?.inviteUrl) {
+    state.inviteUrl = payload.referral.inviteUrl;
+  }
+
+  if (payload.tasks) {
+    applyTasksPayload(payload.tasks);
+  } else {
+    updateHud();
+    savePersistentState();
+  }
+
+  if (payload.withdraw) {
+    state.withdraw.minAmount = payload.withdraw.minAmount ?? state.withdraw.minAmount;
+    state.withdraw.maxAmount = payload.withdraw.maxAmount ?? state.withdraw.maxAmount;
+    state.withdraw.tonRatePerCrystal = payload.withdraw.tonRatePerCrystal ?? state.withdraw.tonRatePerCrystal;
+    state.withdraw.processingText = payload.withdraw.processingText || state.withdraw.processingText;
+  }
+
+  state.withdraw.balance = state.crystals;
+  state.initReady = true;
+  updateHud();
+  savePersistentState();
+}
+
+async function loadAuthPayload() {
+  return apiRequest(
+    "/api/auth/init",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-Init-Data": getTelegramInitData()
+      },
+      body: JSON.stringify({
+        initData: getTelegramInitData()
+      })
+    },
+    "Не удалось загрузить профиль."
+  );
+}
+
+async function initializeHomeState() {
+  if (shouldUseMockTasks()) {
+    applyTasksPayload(buildMockTasksPayload());
+    state.initReady = true;
+    showOverlay("ready");
+    return;
+  }
+
+  showOverlay("loading");
+
+  try {
+    const payload = await loadAuthPayload();
+    applyAuthPayload(payload);
+    showOverlay("ready");
+  } catch (error) {
+    console.error(error);
+    state.initReady = false;
+    showOverlay("authError", {
+      message: error.isNetworkError ? "Проверь сеть и нажми повторить." : error.message
+    });
+  }
 }
 
 function getWithdrawableAmount() {
@@ -984,6 +1097,7 @@ function resetRun() {
   state.scoreFloat = 0;
   state.scoreMultiplier = 1;
   state.runCrystals = 0;
+  state.runCrystalsEarned = 0;
   state.time = 0;
   state.lastFrame = 0;
   state.gateTimer = 0;
@@ -1000,6 +1114,8 @@ function resetRun() {
 
 function showOverlay(mode, payload = {}) {
   gameOverlay.classList.remove("hidden");
+  state.overlayMode = mode;
+  overlayButton.disabled = false;
 
   if (mode === "ready") {
     overlayTitle.textContent = "Удерживай экран, чтобы лететь вверх";
@@ -1017,6 +1133,32 @@ function showOverlay(mode, payload = {}) {
     overlayTitle.textContent = "Забег остановлен";
     overlayText.textContent = `Текущий счёт: ${state.score} м • Множитель: x${state.scoreMultiplier.toFixed(1)}`;
     overlayButton.textContent = "Продолжить";
+  }
+
+  if (mode === "loading") {
+    overlayTitle.textContent = "Загрузка";
+    overlayText.textContent = "Подтягиваем профиль и состояние игры.";
+    overlayButton.textContent = "Подождите";
+    overlayButton.disabled = true;
+  }
+
+  if (mode === "authError") {
+    overlayTitle.textContent = "Ошибка при загрузке";
+    overlayText.textContent = payload.message || "Проверь сеть и нажми повторить.";
+    overlayButton.textContent = "Повторить";
+  }
+
+  if (mode === "saving") {
+    overlayTitle.textContent = "Сохраняем результат";
+    overlayText.textContent = "Подожди пару секунд.";
+    overlayButton.textContent = "Подождите";
+    overlayButton.disabled = true;
+  }
+
+  if (mode === "finishError") {
+    overlayTitle.textContent = "Не удалось сохранить результат";
+    overlayText.textContent = payload.message || "Проверь сеть и нажми повторить.";
+    overlayButton.textContent = "Повторить";
   }
 }
 
@@ -1056,11 +1198,81 @@ function endRun() {
   savePersistentState();
   updateHud();
 
-  showOverlay("gameover", {
+  const finishPayload = {
     score: state.score,
     bestScore: state.bestScore,
-    runCrystals: state.runCrystals
-  });
+    runCrystals: normalizeTenths(state.runCrystalsEarned),
+    crystalsEarned: normalizeTenths(state.runCrystalsEarned)
+  };
+
+  state.pendingFinishPayload = finishPayload;
+
+  if (shouldUseMockTasks()) {
+    state.pendingFinishPayload = null;
+    showOverlay("gameover", finishPayload);
+    return;
+  }
+
+  void submitPendingFinishResult();
+}
+
+async function submitGameFinish(payload) {
+  return apiRequest(
+    "/api/game/finish",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-Init-Data": getTelegramInitData()
+      },
+      body: JSON.stringify({
+        initData: getTelegramInitData(),
+        score: payload.score,
+        crystalsEarned: payload.crystalsEarned
+      })
+    },
+    "Не удалось сохранить результат."
+  );
+}
+
+function applyGameFinishPayload(responseData) {
+  if (responseData.user) {
+    if (typeof responseData.user.balance === "number") {
+      state.crystals = normalizeTenths(responseData.user.balance);
+    }
+    if (typeof responseData.user.bestScore === "number") {
+      state.bestScore = responseData.user.bestScore;
+    }
+  }
+
+  state.withdraw.balance = state.crystals;
+  updateHud();
+  savePersistentState();
+}
+
+async function submitPendingFinishResult() {
+  const payload = state.pendingFinishPayload;
+  if (!payload) {
+    return;
+  }
+
+  showOverlay("saving");
+
+  try {
+    const responseData = await submitGameFinish(payload);
+    applyGameFinishPayload(responseData);
+    state.pendingFinishPayload = null;
+    showOverlay("gameover", {
+      score: payload.score,
+      bestScore: state.bestScore,
+      runCrystals: payload.runCrystals
+    });
+  } catch (error) {
+    console.error(error);
+    showOverlay("finishError", {
+      message: error.isNetworkError ? "Проверь сеть и нажми повторить." : error.message
+    });
+  }
 }
 
 function spawnGate() {
@@ -1188,6 +1400,8 @@ function update(deltaMs) {
     if (Math.hypot(dx, dy) < state.player.radius + shard.radius + 2) {
       state.runCrystals += 1;
       state.crystals += state.crystalMultiplier;
+      state.runCrystalsEarned += state.crystalMultiplier;
+      state.runCrystalsEarned = normalizeTenths(state.runCrystalsEarned);
       state.crystals = normalizeTenths(state.crystals);
       state.flash = 1;
       crystalsCollected = true;
@@ -1367,6 +1581,11 @@ document.addEventListener("visibilitychange", () => {
 function bindHold(target, startEvent, endEvent) {
   target.addEventListener(startEvent, (event) => {
     event.preventDefault();
+
+    if (!state.initReady || state.overlayMode === "loading" || state.overlayMode === "saving" || state.overlayMode === "finishError" || state.overlayMode === "authError") {
+      return;
+    }
+
     ensureMusicStarted();
 
     if (state.paused) {
@@ -1411,6 +1630,11 @@ document.addEventListener("dblclick", (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.code === "Space") {
     event.preventDefault();
+
+    if (!state.initReady || state.overlayMode === "loading" || state.overlayMode === "saving" || state.overlayMode === "finishError" || state.overlayMode === "authError") {
+      return;
+    }
+
     ensureMusicStarted();
 
     if (state.paused) {
@@ -1431,6 +1655,20 @@ document.addEventListener("keyup", (event) => {
 });
 
 overlayButton.addEventListener("click", () => {
+  if (state.overlayMode === "authError") {
+    void initializeHomeState();
+    return;
+  }
+
+  if (state.overlayMode === "finishError") {
+    void submitPendingFinishResult();
+    return;
+  }
+
+  if (state.overlayMode === "loading" || state.overlayMode === "saving" || !state.initReady) {
+    return;
+  }
+
   ensureMusicStarted();
 
   if (state.paused) {
@@ -1443,17 +1681,10 @@ overlayButton.addEventListener("click", () => {
 
 async function bootstrap() {
   updateHud();
-  showOverlay("ready");
+  showOverlay(shouldUseMockTasks() ? "ready" : "loading");
   render();
 
-  try {
-    const payload = await loadTasksPayload();
-    applyTasksPayload(payload);
-  } catch (error) {
-    console.error(error);
-    showToast(error.message || "Ошибка загрузки");
-    applyTasksPayload(buildMockTasksPayload());
-  }
+  await initializeHomeState();
 
   requestAnimationFrame(loop);
 }
