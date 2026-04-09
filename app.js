@@ -50,7 +50,6 @@ music.volume = 0.38;
 music.loop = true;
 
 let tonConnectUI = null;
-let lastTonWalletAddress = "";
 
 const storageKeys = {
   bestScore: "jetpack-pulse-best-score",
@@ -80,18 +79,11 @@ function getTonWalletAccount() {
   return tonConnectUI?.wallet?.account || null;
 }
 
-function syncTonWalletState({ showConnectedToast = false } = {}) {
+function syncTonWalletState() {
   const walletAccount = getTonWalletAccount();
-  const nextAddress = walletAccount?.address || "";
-  const shouldNotify = showConnectedToast && nextAddress && nextAddress !== lastTonWalletAddress;
 
   state.withdraw.walletInfo = walletAccount;
-  lastTonWalletAddress = nextAddress;
   renderWithdraw();
-
-  if (shouldNotify) {
-    showToast("TON кошелек подключен");
-  }
 }
 
 function ensureTonConnect() {
@@ -114,7 +106,7 @@ function ensureTonConnect() {
 
   syncTonWalletState();
   tonConnectUI.onStatusChange(() => {
-    syncTonWalletState({ showConnectedToast: true });
+    syncTonWalletState();
   });
 
   return tonConnectUI;
@@ -1017,7 +1009,6 @@ async function connectTonWallet() {
     localStorage.setItem(storageKeys.mockWalletConnected, "1");
     state.withdraw.walletInfo = getMockWalletInfo();
     renderWithdraw();
-    showToast("TON кошелек подключен");
     return;
   }
 
@@ -1025,7 +1016,6 @@ async function connectTonWallet() {
   syncTonWalletState();
 
   if (ui.wallet?.account) {
-    showToast("TON кошелек подключен");
     return;
   }
 
