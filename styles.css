@@ -647,6 +647,10 @@ button {
   gap: 8px;
   padding: 12px 10px calc(12px + env(safe-area-inset-bottom));
   background: linear-gradient(180deg, rgba(9, 6, 15, 0), rgba(9, 6, 15, 0.95) 36%);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .nav-item {
@@ -666,6 +670,10 @@ button {
   white-space: nowrap;
   font-size: 11px;
   line-height: 1.05;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .nav-item-active {
@@ -682,6 +690,7 @@ button {
   width: 22px;
   height: 22px;
   flex-shrink: 0;
+  pointer-events: none;
 }
 
 .nav-icon img {
@@ -690,6 +699,7 @@ button {
   height: 18px;
   object-fit: contain;
   filter: brightness(0) saturate(100%) invert(78%) sepia(17%) saturate(510%) hue-rotate(218deg) brightness(92%) contrast(88%);
+  pointer-events: none;
 }
 
 .nav-item-active .nav-icon img {
