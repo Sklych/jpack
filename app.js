@@ -981,7 +981,7 @@ async function loadTasksPayload() {
 function openSharePrompt() {
   const shareUrl = new URL("https://t.me/share/url");
   shareUrl.searchParams.set("url", window.location.href);
-  shareUrl.searchParams.set("text", "Залетай в игру и попробуй побить мой рекорд.");
+  shareUrl.searchParams.set("text", "Собирай кристаллы в JetTON Rush и выводи награды в TON.");
 
   if (tg?.openTelegramLink) {
     tg.openTelegramLink(shareUrl.toString());
@@ -995,7 +995,7 @@ function openInvitePrompt() {
   const inviteUrl = state.inviteUrl || window.location.href;
   const shareUrl = new URL("https://t.me/share/url");
   shareUrl.searchParams.set("url", inviteUrl);
-  shareUrl.searchParams.set("text", "Залетай в игру по моей ссылке и попробуй побить мой рекорд.");
+  shareUrl.searchParams.set("text", "Собирай кристаллы в JetTON Rush и выводи награды в TON.");
 
   if (tg?.openTelegramLink) {
     tg.openTelegramLink(shareUrl.toString());
