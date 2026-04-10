@@ -51,6 +51,8 @@ music.volume = 0.38;
 music.loop = true;
 
 let tonConnectUI = null;
+let writeAccessRequestInFlight = false;
+let writeAccessRequestedThisSession = Boolean(tg?.initDataUnsafe?.user?.allows_write_to_pm);
 
 const storageKeys = {
   bestScore: "jetpack-pulse-best-score",
@@ -111,6 +113,39 @@ function ensureTonConnect() {
   });
 
   return tonConnectUI;
+}
+
+function requestWriteAccessForWithdraw() {
+  if (
+    !tg?.requestWriteAccess
+    || tg.initDataUnsafe?.user?.allows_write_to_pm
+    || writeAccessRequestedThisSession
+    || writeAccessRequestInFlight
+  ) {
+    return;
+  }
+
+  writeAccessRequestInFlight = true;
+  writeAccessRequestedThisSession = true;
+
+  try {
+    const result = tg.requestWriteAccess((granted) => {
+      writeAccessRequestInFlight = false;
+      if (granted && tg.initDataUnsafe?.user) {
+        tg.initDataUnsafe.user.allows_write_to_pm = true;
+      }
+    });
+
+    if (result?.catch) {
+      result.catch((error) => {
+        console.error(error);
+        writeAccessRequestInFlight = false;
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    writeAccessRequestInFlight = false;
+  }
 }
 
 function createNetworkError(message) {
@@ -1191,6 +1226,7 @@ function switchScreen(target) {
   }
 
   if (target === "withdraw") {
+    requestWriteAccessForWithdraw();
     ensureWithdrawLoaded();
   }
 }
