@@ -979,32 +979,32 @@ async function loadTasksPayload() {
   );
 }
 
+function buildTelegramShareUrl(url, text) {
+  return `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+}
+
 function openSharePrompt() {
   const inviteUrl = state.inviteUrl || window.location.href;
-  const shareUrl = new URL("https://t.me/share/url");
-  shareUrl.searchParams.set("url", inviteUrl);
-  shareUrl.searchParams.set("text", INVITE_SHARE_TEXT);
+  const shareUrl = buildTelegramShareUrl(inviteUrl, INVITE_SHARE_TEXT);
 
   if (tg?.openTelegramLink) {
-    tg.openTelegramLink(shareUrl.toString());
+    tg.openTelegramLink(shareUrl);
     return;
   }
 
-  window.open(shareUrl.toString(), "_blank", "noopener,noreferrer");
+  window.open(shareUrl, "_blank", "noopener,noreferrer");
 }
 
 function openInvitePrompt() {
   const inviteUrl = state.inviteUrl || window.location.href;
-  const shareUrl = new URL("https://t.me/share/url");
-  shareUrl.searchParams.set("url", inviteUrl);
-  shareUrl.searchParams.set("text", INVITE_SHARE_TEXT);
+  const shareUrl = buildTelegramShareUrl(inviteUrl, INVITE_SHARE_TEXT);
 
   if (tg?.openTelegramLink) {
-    tg.openTelegramLink(shareUrl.toString());
+    tg.openTelegramLink(shareUrl);
     return;
   }
 
-  window.open(shareUrl.toString(), "_blank", "noopener,noreferrer");
+  window.open(shareUrl, "_blank", "noopener,noreferrer");
 }
 
 function saveMockWithdrawHistory(items) {
