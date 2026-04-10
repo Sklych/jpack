@@ -25,11 +25,15 @@ BOT_USERNAME = os.getenv("BOT_USERNAME", "").strip()
 BOT_APP_SHORT_NAME = os.getenv("BOT_APP_SHORT_NAME", "").strip()
 DATABASE_PATH = os.getenv("DATABASE_PATH", str(BASE_DIR / "main.db"))
 INIT_DATA_MAX_AGE_SECONDS = int(os.getenv("INIT_DATA_MAX_AGE_SECONDS", "86400"))
-MIN_WITHDRAW_CRYSTALS = tenths_to_number(decimal_to_tenths(os.getenv("MIN_WITHDRAW_CRYSTALS", "10")))
+MIN_WITHDRAW_CRYSTALS = tenths_to_number(decimal_to_tenths(os.getenv("MIN_WITHDRAW_CRYSTALS", "45")))
 MAX_WITHDRAW_CRYSTALS_PER_REQUEST = tenths_to_number(
-    decimal_to_tenths(os.getenv("MAX_WITHDRAW_CRYSTALS_PER_REQUEST", "100"))
+    decimal_to_tenths(os.getenv("MAX_WITHDRAW_CRYSTALS_PER_REQUEST", "90"))
 )
-TON_RATE_PER_CRYSTAL = float(os.getenv("TON_RATE_PER_CRYSTAL", "0.01"))
+TON_RATE_PER_CRYSTAL = float(
+    os.getenv("CRYSTAL_TO_TON_RATE")
+    or os.getenv("TON_RATE_PER_CRYSTAL", "0.001111")
+)
+TON_RUB_RATE = float(os.getenv("TON_RUB_RATE", "100"))
 ADMIN_API_TOKEN = os.getenv("ADMIN_API_TOKEN", "").strip()
 WITHDRAWAL_NOTE = "Вывод обрабатывается до 24 часов"
 REFERRAL_TASK_MULTIPLIER_TENTHS = 3
@@ -357,6 +361,7 @@ def auth_init():
                 "minAmount": MIN_WITHDRAW_CRYSTALS,
                 "maxAmount": MAX_WITHDRAW_CRYSTALS_PER_REQUEST,
                 "tonRatePerCrystal": TON_RATE_PER_CRYSTAL,
+                "tonRubRate": TON_RUB_RATE,
                 "processingText": WITHDRAWAL_NOTE,
             },
             "tasks": tasks_payload,

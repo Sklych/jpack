@@ -401,9 +401,9 @@ function buildMockWithdrawPayload() {
   return {
     balance: normalizeTenths(fallbackBalance),
     walletInfo,
-    minAmount: 10,
-    maxAmount: 40,
-    tonRatePerCrystal: 0.01,
+    minAmount: 45,
+    maxAmount: 90,
+    tonRatePerCrystal: 0.001111,
     processingText: "Вывод до 24 часов",
     items: getMockWithdrawHistory()
   };
@@ -432,9 +432,9 @@ const state = {
   },
   withdraw: {
     balance: normalizeTenths(Number(localStorage.getItem(storageKeys.crystals) || 0)),
-    minAmount: 10,
-    maxAmount: 40,
-    tonRatePerCrystal: 0.01,
+    minAmount: 45,
+    maxAmount: 90,
+    tonRatePerCrystal: 0.001111,
     processingText: "Вывод до 24 часов",
     walletInfo: null,
     items: null
