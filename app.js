@@ -44,7 +44,7 @@ const overlayTitle = document.getElementById("overlayTitle");
 const overlayText = document.getElementById("overlayText");
 const overlayButton = document.getElementById("overlayButton");
 
-const music = new Audio("./background-loop.m4a");
+const music = new Audio("./background-updated.ogg");
 music.preload = "auto";
 music.volume = 0.38;
 music.loop = true;
