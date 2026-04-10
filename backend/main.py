@@ -600,6 +600,45 @@ def admin_set_user_balance():
     )
 
 
+@app.route("/api/admin/users/add-mock-referrals", methods=["POST"])
+def admin_add_mock_referrals():
+    admin_error = require_admin_token()
+    if admin_error:
+        return admin_error
+
+    payload = request.get_json(silent=True) or {}
+    uid = str(payload.get("uid") or payload.get("userId") or "").strip()
+    count = payload.get("count", 1)
+
+    if not uid:
+        return error_response("UID_REQUIRED", "Нужно передать uid.", 400)
+
+    try:
+        count = int(count)
+    except (TypeError, ValueError):
+        return error_response("COUNT_INVALID", "count должен быть целым числом.", 400)
+
+    if count <= 0:
+        return error_response("COUNT_INVALID", "count должен быть больше нуля.", 400)
+    if count > 50:
+        return error_response("COUNT_INVALID", "count не должен быть больше 50.", 400)
+
+    try:
+        created_uids = db.add_mock_referrals(uid, count)
+    except ValueError as error:
+        if str(error) == "Referrer not found":
+            return error_response("USER_NOT_FOUND", "Пользователь не найден.", 404)
+        return error_response("MOCK_REFERRALS_FAILED", "Не удалось добавить моковых рефералов.", 400)
+
+    return ok(
+        {
+            "createdUids": created_uids,
+            "referralCount": db.get_referral_count(uid),
+            "tasks": build_tasks_payload(uid),
+        }
+    )
+
+
 @app.route("/api/withdraw/request", methods=["POST"])
 def withdraw_request():
     auth_result, auth_error = get_authenticated_user()

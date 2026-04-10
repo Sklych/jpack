@@ -319,6 +319,54 @@ class Database:
             ).fetchone()
             return int(row["count"]) if row else 0
 
+    def add_mock_referrals(self, referrer_uid: str, count: int) -> list[str]:
+        referrer_uid = str(referrer_uid)
+        count = int(count)
+        if count <= 0:
+            return []
+
+        created_uids: list[str] = []
+        timestamp = now_iso()
+
+        with _lock:
+            with self.connection() as conn:
+                referrer = conn.execute(
+                    "SELECT 1 FROM users WHERE tg_uid = ?",
+                    (referrer_uid,),
+                ).fetchone()
+                if not referrer:
+                    raise ValueError("Referrer not found")
+
+                for index in range(count):
+                    referred_uid = f"mock_{referrer_uid}_{timestamp}_{index}".replace(":", "_").replace("+", "_")
+                    conn.execute(
+                        """
+                        INSERT INTO users (
+                            tg_uid, username, first_name, last_name, photo_url, language_code,
+                            best_score, crystals_balance_tenths, wallet_address, referrer_uid,
+                            created_at, updated_at
+                        )
+                        VALUES (?, NULL, ?, NULL, NULL, 'ru', 0, 0, NULL, ?, ?, ?)
+                        """,
+                        (
+                            referred_uid,
+                            f"Моковый друг {index + 1}",
+                            referrer_uid,
+                            timestamp,
+                            timestamp,
+                        ),
+                    )
+                    conn.execute(
+                        """
+                        INSERT INTO referrals (referrer_uid, referred_uid, created_at)
+                        VALUES (?, ?, ?)
+                        """,
+                        (referrer_uid, referred_uid, timestamp),
+                    )
+                    created_uids.append(referred_uid)
+
+        return created_uids
+
     def get_task_completions(self, uid: str) -> list[sqlite3.Row]:
         with self.connection() as conn:
             return conn.execute(
