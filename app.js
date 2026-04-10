@@ -11,6 +11,7 @@ if (tg) {
 
 const TASKS_FORCE_MOCK = new URLSearchParams(window.location.search).get("mockTasks") === "1";
 const REQUEST_TIMEOUT_MS = 20_000;
+const INVITE_SHARE_TEXT = "Фарми TON вместе со мной 💎";
 
 const navItems = [...document.querySelectorAll(".nav-item")];
 const screens = [...document.querySelectorAll(".screen")];
@@ -979,9 +980,10 @@ async function loadTasksPayload() {
 }
 
 function openSharePrompt() {
+  const inviteUrl = state.inviteUrl || window.location.href;
   const shareUrl = new URL("https://t.me/share/url");
-  shareUrl.searchParams.set("url", window.location.href);
-  shareUrl.searchParams.set("text", "Собирай кристаллы в JetTON Rush и выводи награды в TON.");
+  shareUrl.searchParams.set("url", inviteUrl);
+  shareUrl.searchParams.set("text", INVITE_SHARE_TEXT);
 
   if (tg?.openTelegramLink) {
     tg.openTelegramLink(shareUrl.toString());
@@ -995,7 +997,7 @@ function openInvitePrompt() {
   const inviteUrl = state.inviteUrl || window.location.href;
   const shareUrl = new URL("https://t.me/share/url");
   shareUrl.searchParams.set("url", inviteUrl);
-  shareUrl.searchParams.set("text", "Собирай кристаллы в JetTON Rush и выводи награды в TON.");
+  shareUrl.searchParams.set("text", INVITE_SHARE_TEXT);
 
   if (tg?.openTelegramLink) {
     tg.openTelegramLink(shareUrl.toString());
@@ -1209,9 +1211,10 @@ leaderboardTabButtons.forEach((button) => {
 if (copyInviteButton) {
   copyInviteButton.addEventListener("click", async () => {
     const inviteUrl = state.inviteUrl || window.location.href;
+    const inviteMessage = `${inviteUrl}\n${INVITE_SHARE_TEXT}`;
 
     try {
-      await navigator.clipboard.writeText(inviteUrl);
+      await navigator.clipboard.writeText(inviteMessage);
       showToast("Ссылка скопирована");
     } catch (error) {
       console.error(error);
