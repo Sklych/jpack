@@ -753,6 +753,18 @@ class Database:
                 (str(uid), limit),
             ).fetchall()
 
+    def get_completed_withdrawal_count(self, uid: str) -> int:
+        with self.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS count
+                FROM withdrawal_requests
+                WHERE tg_uid = ? AND status = 'completed'
+                """,
+                (str(uid),),
+            ).fetchone()
+            return int(row["count"]) if row else 0
+
     def complete_withdrawal_requests(self, ids: list[int]) -> dict:
         normalized_ids = []
         seen = set()

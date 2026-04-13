@@ -12,6 +12,8 @@ if (tg) {
 const TASKS_FORCE_MOCK = new URLSearchParams(window.location.search).get("mockTasks") === "1";
 const REQUEST_TIMEOUT_MS = 20_000;
 const INVITE_SHARE_TEXT = "Фарми TON вместе со мной 💎";
+const MIN_REFERRALS_FOR_THIRD_WITHDRAWAL = 3;
+const COMPLETED_WITHDRAWALS_BEFORE_REFERRAL_CHECK = 2;
 
 const navItems = [...document.querySelectorAll(".nav-item")];
 const screens = [...document.querySelectorAll(".screen")];
@@ -780,6 +782,17 @@ function getWithdrawableAmount() {
   return normalizeTenths(Math.min(state.withdraw.balance, state.withdraw.maxAmount));
 }
 
+function getCompletedWithdrawalsCount() {
+  return (state.withdraw.items || []).filter((item) => item.status === "completed").length;
+}
+
+function isThirdWithdrawBlocked() {
+  return (
+    getCompletedWithdrawalsCount() >= COMPLETED_WITHDRAWALS_BEFORE_REFERRAL_CHECK
+    && state.referralCount < MIN_REFERRALS_FOR_THIRD_WITHDRAWAL
+  );
+}
+
 function formatWithdrawDate(value) {
   if (!value) {
     return "";
@@ -828,16 +841,22 @@ function renderWithdraw() {
   const tonAmount = availableAmount * state.withdraw.tonRatePerCrystal;
   const walletConnected = Boolean(state.withdraw.walletInfo);
   const amountTooSmall = availableAmount < state.withdraw.minAmount;
+  const thirdWithdrawBlocked = isThirdWithdrawBlocked();
+  const withdrawBlocked = amountTooSmall || thirdWithdrawBlocked;
 
   withdrawBalanceValue.textContent = formatTenths(state.withdraw.balance);
   withdrawButton.textContent = `Вывести ${formatTenths(availableAmount)} кристаллов • ${formatTon(tonAmount)} TON`;
-  withdrawButton.classList.toggle("withdraw-button-disabled", amountTooSmall);
-  withdrawButton.setAttribute("aria-disabled", amountTooSmall ? "true" : "false");
+  withdrawButton.classList.toggle("withdraw-button-disabled", withdrawBlocked);
+  withdrawButton.setAttribute("aria-disabled", withdrawBlocked ? "true" : "false");
 
   connectWalletButton.classList.toggle("withdraw-connect-hidden", walletConnected);
-  withdrawHint.textContent = walletConnected
-    ? state.withdraw.processingText
-    : "Подключи TON кошелек";
+  if (!walletConnected) {
+    withdrawHint.textContent = "Подключи TON кошелек";
+  } else if (thirdWithdrawBlocked) {
+    withdrawHint.textContent = "Нужно пригласить 3 друга";
+  } else {
+    withdrawHint.textContent = state.withdraw.processingText;
+  }
 
   if (state.withdrawStatus === "loading" && !state.withdraw.items) {
     withdrawHistory.innerHTML = renderScreenState("Загружаем данные...");
@@ -1079,6 +1098,11 @@ async function createWithdrawRequest() {
 
   if (amount < state.withdraw.minAmount) {
     showToast(`От ${formatTenths(state.withdraw.minAmount)} кристаллов`);
+    return;
+  }
+
+  if (isThirdWithdrawBlocked()) {
+    showToast("Нужно пригласить 3 друга");
     return;
   }
 

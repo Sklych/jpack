@@ -40,6 +40,8 @@ REFERRAL_TASK_MULTIPLIER_TENTHS = 3
 FIRST_REFERRAL_TARGET = 3
 SECOND_REFERRAL_TARGET = 10
 REFERRAL_TARGET_STEP = 10
+MIN_REFERRALS_FOR_THIRD_WITHDRAWAL = 3
+COMPLETED_WITHDRAWALS_BEFORE_REFERRAL_CHECK = 2
 VALID_TASK_KEY_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_:-]{1,63}$")
 VALID_REWARD_TYPES = {"crystal_multiplier", "crystals"}
 
@@ -677,6 +679,18 @@ def withdraw_request():
         return error_response(
             "WITHDRAW_AMOUNT_TOO_SMALL",
             f"Минимальная сумма вывода: {MIN_WITHDRAW_CRYSTALS}",
+            400,
+        )
+
+    completed_withdrawals = db.get_completed_withdrawal_count(user_row["tg_uid"])
+    referral_count = db.get_referral_count(user_row["tg_uid"])
+    if (
+        completed_withdrawals >= COMPLETED_WITHDRAWALS_BEFORE_REFERRAL_CHECK
+        and referral_count < MIN_REFERRALS_FOR_THIRD_WITHDRAWAL
+    ):
+        return error_response(
+            "WITHDRAW_REFERRALS_REQUIRED",
+            "Нужно пригласить 3 друга",
             400,
         )
 
